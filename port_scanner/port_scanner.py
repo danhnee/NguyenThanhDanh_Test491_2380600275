@@ -1,26 +1,31 @@
-import socket
+from scapy.all import *
 
-def port_scanner(host, port):
-    # Socket object create lote tal
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    # Timeout htar dar ka port pait nay yin a kyar gyi ma saunt ag par
-    s.settimeout(1)
-    
-    # Connection san kyi tal
-    try:
-        connection = s.connect_ex((host, port))
-        if connection == 0:
-            print(f"Port {port}: Open")
-        s.close()
-    except:
-        pass
+COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 
-# Target IP nae port range ko thut mhat mal
-target = "127.0.0.1" # Localhost mhar san kyi ya ag
+def scan_common_ports(target_domain, timeout=2):
+    open_ports = []
+    target_ip = socket.gethostbyname(target_domain)
 
-print(f"Scanning {target}...")
-for port in range(1, 101): # Port 1 ka nay 100 thi scan mal
-    port_scanner(target, port)
+    for port in COMMON_PORTS:
+        response = sr1(IP(dst=target_ip)/TCP(dport=port, flags="S"), 
+                       timeout=timeout, verbose=0)
 
-print("Scan Finished.")
+        if response and response.haslayer(TCP) and response[TCP].flags == 0x12:
+            open_ports.append(port)
+            send(IP(dst=target_ip)/TCP(dport=port, flags="R"), verbose=0)
+
+    return open_ports
+
+def main():
+    target_domain = input("Enter the target domain: ")
+
+    open_ports = scan_common_ports(target_domain)
+
+    if open_ports:
+        print("Open common ports:")
+        print(open_ports)
+    else:
+        print("No open common ports found.")
+
+if __name__ == '__main__':
+    main()
